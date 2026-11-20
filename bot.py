@@ -11,7 +11,9 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-IMAGE_URL = os.environ.get("IMAGE_URL", "https://i.imgur.com/your_image_placeholder.jpg") 
+
+# ⚠️ IMPORTANT: Use the exact filename you uploaded to GitHub
+IMAGE_PATH = "IMG_20261120_233441_895.jpg" 
 TELEGRAM_CONTACT = "Logan207"
 USERS_FILE = "users.json"
 
@@ -44,13 +46,17 @@ async def send_welcome_message(chat_id, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     try:
-        await context.bot.send_photo(
-            chat_id=chat_id,
-            photo=IMAGE_URL,
-            caption=WELCOME_TEXT,
-            reply_markup=reply_markup,
-            parse_mode="HTML"
-        )
+        # Open the local image file in binary read mode ('rb')
+        with open(IMAGE_PATH, 'rb') as photo_file:
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo_file, # Pass the opened file object
+                caption=WELCOME_TEXT,
+                reply_markup=reply_markup,
+                parse_mode="HTML"
+            )
+    except FileNotFoundError:
+         logger.error(f"Image file '{IMAGE_PATH}' not found! Please check the filename.")
     except Exception as e:
         logger.error(f"Failed to send message to {chat_id}: {e}")
 
@@ -95,10 +101,7 @@ def main() -> None:
     job_queue = application.job_queue
     if job_queue:
         # Runs every 86400 seconds (24 hours). 
-        # 'first' is set to 10 seconds so you can test it right after deployment.
-        # Change 'first' to 86400 when you are ready for production.
         job_queue.run_repeating(send_daily_broadcast, interval=86400, first=10)
-        logger.info("Daily broadcast job scheduled.")
 
     logger.info("Bot is starting...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
